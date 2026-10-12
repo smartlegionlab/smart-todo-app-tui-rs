@@ -31,6 +31,8 @@ Smart TODO TUI is a self-contained terminal application. It renders a full inter
 - Add, edit, toggle, and delete tasks with single-key shortcuts
 - Two-press delete confirmation to prevent accidental removal
 - Modal input for adding and editing task titles
+- Task titles are limited to 200 characters, with a live counter in the input
+  modal that turns yellow near the limit and red once it is reached
 - Long titles are truncated with an ellipsis in the list, and the input
   modal scrolls horizontally so the cursor is always visible
 - About screen with version, author, license, and project links
@@ -103,13 +105,15 @@ Format:
     "done": false
   },
   {
-    "title": "Ship version 0.1.2",
+    "title": "Ship version 0.1.3",
     "done": true
   }
 ]
 ```
 
 The file is created automatically on first save. If it does not exist at startup, the application begins with an empty task list.
+
+Task titles are limited to 200 characters. Longer titles are truncated on save, so the stored JSON never contains a title beyond that limit.
 
 ---
 
