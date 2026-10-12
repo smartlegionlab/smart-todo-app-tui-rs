@@ -97,7 +97,7 @@ Format:
     "done": false
   },
   {
-    "title": "Ship version 0.1.1",
+    "title": "Ship version 0.1.2",
     "done": true
   }
 ]

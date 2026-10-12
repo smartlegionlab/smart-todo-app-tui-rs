@@ -204,6 +204,41 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    struct TempEnv {
+        _guard: std::sync::MutexGuard<'static, ()>,
+        path: std::path::PathBuf,
+    }
+
+    impl TempEnv {
+        fn new(name: &str) -> Self {
+            let guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+            let mut path = std::env::temp_dir();
+            path.push(format!(
+                "smart-todo-test-{}-{}-{:?}.json",
+                name,
+                std::process::id(),
+                std::thread::current().id()
+            ));
+            let _ = std::fs::remove_file(&path);
+            unsafe {
+                std::env::set_var("SMART_TODO_FILE", &path);
+            }
+            TempEnv { _guard: guard, path }
+        }
+    }
+
+    impl Drop for TempEnv {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.path);
+            unsafe {
+                std::env::remove_var("SMART_TODO_FILE");
+            }
+        }
+    }
 
     fn todo(title: &str, done: bool) -> Todo {
         Todo { title: title.into(), done }
@@ -224,12 +259,14 @@ mod tests {
 
     #[test]
     fn counts_empty() {
+        let _env = TempEnv::new("counts_empty");
         let app = app_with(vec![], 0);
         assert_eq!(app.counts(), (0, 0));
     }
 
     #[test]
     fn counts_mixed() {
+        let _env = TempEnv::new("counts_mixed");
         let app = app_with(
             vec![todo("a", true), todo("b", false), todo("c", true)],
             0,
@@ -239,6 +276,7 @@ mod tests {
 
     #[test]
     fn next_stops_at_last() {
+        let _env = TempEnv::new("next_stops_at_last");
         let mut app = app_with(vec![todo("a", false), todo("b", false)], 0);
         app.next();
         assert_eq!(app.selected, 1);
@@ -248,6 +286,7 @@ mod tests {
 
     #[test]
     fn next_on_empty_does_nothing() {
+        let _env = TempEnv::new("next_on_empty_does_nothing");
         let mut app = app_with(vec![], 0);
         app.next();
         assert_eq!(app.selected, 0);
@@ -255,6 +294,7 @@ mod tests {
 
     #[test]
     fn prev_stops_at_zero() {
+        let _env = TempEnv::new("prev_stops_at_zero");
         let mut app = app_with(vec![todo("a", false), todo("b", false)], 1);
         app.prev();
         assert_eq!(app.selected, 0);
@@ -264,6 +304,7 @@ mod tests {
 
     #[test]
     fn next_clears_pending_delete() {
+        let _env = TempEnv::new("next_clears_pending_delete");
         let mut app = app_with(vec![todo("a", false), todo("b", false)], 0);
         app.request_delete();
         assert_eq!(app.pending_delete, Some(0));
@@ -273,6 +314,7 @@ mod tests {
 
     #[test]
     fn toggle_done_flips_state() {
+        let _env = TempEnv::new("toggle_done_flips_state");
         let mut app = app_with(vec![todo("a", false)], 0);
         app.toggle_done();
         assert!(app.todos[0].done);
@@ -282,6 +324,7 @@ mod tests {
 
     #[test]
     fn toggle_done_on_empty_does_nothing() {
+        let _env = TempEnv::new("toggle_done_on_empty_does_nothing");
         let mut app = app_with(vec![], 0);
         app.toggle_done();
         assert!(app.todos.is_empty());
@@ -289,6 +332,7 @@ mod tests {
 
     #[test]
     fn delete_requires_two_calls() {
+        let _env = TempEnv::new("delete_requires_two_calls");
         let mut app = app_with(vec![todo("a", false), todo("b", false)], 0);
 
         app.request_delete();
@@ -303,6 +347,7 @@ mod tests {
 
     #[test]
     fn delete_on_empty_does_nothing() {
+        let _env = TempEnv::new("delete_on_empty_does_nothing");
         let mut app = app_with(vec![], 0);
         app.request_delete();
         assert_eq!(app.pending_delete, None);
@@ -311,6 +356,7 @@ mod tests {
 
     #[test]
     fn delete_last_item_moves_selection() {
+        let _env = TempEnv::new("delete_last_item_moves_selection");
         let mut app = app_with(vec![todo("a", false), todo("b", false)], 1);
         app.request_delete();
         app.request_delete();
@@ -320,6 +366,7 @@ mod tests {
 
     #[test]
     fn delete_only_item_keeps_selection_at_zero() {
+        let _env = TempEnv::new("delete_only_item_keeps_selection_at_zero");
         let mut app = app_with(vec![todo("a", false)], 0);
         app.request_delete();
         app.request_delete();
@@ -329,6 +376,7 @@ mod tests {
 
     #[test]
     fn delete_second_press_after_move_is_cancelled() {
+        let _env = TempEnv::new("delete_second_press_after_move_is_cancelled");
         let mut app = app_with(vec![todo("a", false), todo("b", false)], 0);
         app.request_delete();
         app.next();
@@ -339,6 +387,7 @@ mod tests {
 
     #[test]
     fn open_about_sets_mode() {
+        let _env = TempEnv::new("open_about_sets_mode");
         let mut app = app_with(vec![], 0);
         app.open_about();
         assert_eq!(app.mode, Mode::About);
@@ -346,6 +395,7 @@ mod tests {
 
     #[test]
     fn open_about_clears_pending_delete() {
+        let _env = TempEnv::new("open_about_clears_pending_delete");
         let mut app = app_with(vec![todo("a", false)], 0);
         app.request_delete();
         app.open_about();
@@ -355,6 +405,7 @@ mod tests {
 
     #[test]
     fn close_about_returns_to_normal() {
+        let _env = TempEnv::new("close_about_returns_to_normal");
         let mut app = app_with(vec![], 0);
         app.open_about();
         app.close_about();
@@ -363,6 +414,7 @@ mod tests {
 
     #[test]
     fn start_adding_clears_input() {
+        let _env = TempEnv::new("start_adding_clears_input");
         let mut app = app_with(vec![], 0);
         app.input = "stale".into();
         app.input_cursor = 5;
@@ -374,6 +426,7 @@ mod tests {
 
     #[test]
     fn start_editing_loads_title_into_input() {
+        let _env = TempEnv::new("start_editing_loads_title_into_input");
         let mut app = app_with(vec![todo("hello", false)], 0);
         app.start_editing();
         assert_eq!(app.mode, Mode::Editing);
@@ -383,6 +436,7 @@ mod tests {
 
     #[test]
     fn start_editing_on_empty_does_nothing() {
+        let _env = TempEnv::new("start_editing_on_empty_does_nothing");
         let mut app = app_with(vec![], 0);
         app.start_editing();
         assert_eq!(app.mode, Mode::Normal);
@@ -390,6 +444,7 @@ mod tests {
 
     #[test]
     fn commit_adding_pushes_todo() {
+        let _env = TempEnv::new("commit_adding_pushes_todo");
         let mut app = app_with(vec![], 0);
         app.start_adding();
         app.input = "new task".into();
@@ -404,6 +459,7 @@ mod tests {
 
     #[test]
     fn commit_adding_trims_whitespace() {
+        let _env = TempEnv::new("commit_adding_trims_whitespace");
         let mut app = app_with(vec![], 0);
         app.start_adding();
         app.input = "   spaced   ".into();
@@ -413,6 +469,7 @@ mod tests {
 
     #[test]
     fn commit_adding_empty_is_cancelled() {
+        let _env = TempEnv::new("commit_adding_empty_is_cancelled");
         let mut app = app_with(vec![], 0);
         app.start_adding();
         app.input = "   ".into();
@@ -423,6 +480,7 @@ mod tests {
 
     #[test]
     fn commit_editing_replaces_title() {
+        let _env = TempEnv::new("commit_editing_replaces_title");
         let mut app = app_with(vec![todo("old", false)], 0);
         app.start_editing();
         app.input = "new".into();
@@ -434,6 +492,7 @@ mod tests {
 
     #[test]
     fn cancel_input_resets_state() {
+        let _env = TempEnv::new("cancel_input_resets_state");
         let mut app = app_with(vec![], 0);
         app.start_adding();
         app.input = "partial".into();
@@ -446,6 +505,7 @@ mod tests {
 
     #[test]
     fn input_push_appends_at_end() {
+        let _env = TempEnv::new("input_push_appends_at_end");
         let mut app = app_with(vec![], 0);
         app.start_adding();
         app.input_push('a');
@@ -457,6 +517,7 @@ mod tests {
 
     #[test]
     fn input_push_inserts_at_cursor() {
+        let _env = TempEnv::new("input_push_inserts_at_cursor");
         let mut app = app_with(vec![], 0);
         app.start_adding();
         app.input_push('a');
@@ -469,6 +530,7 @@ mod tests {
 
     #[test]
     fn input_push_handles_multibyte() {
+        let _env = TempEnv::new("input_push_handles_multibyte");
         let mut app = app_with(vec![], 0);
         app.start_adding();
 
@@ -488,6 +550,7 @@ mod tests {
 
     #[test]
     fn input_backspace_removes_last() {
+        let _env = TempEnv::new("input_backspace_removes_last");
         let mut app = app_with(vec![], 0);
         app.start_adding();
         app.input_push('a');
@@ -499,6 +562,7 @@ mod tests {
 
     #[test]
     fn input_backspace_at_start_does_nothing() {
+        let _env = TempEnv::new("input_backspace_at_start_does_nothing");
         let mut app = app_with(vec![], 0);
         app.start_adding();
         app.input_push('a');
@@ -510,6 +574,7 @@ mod tests {
 
     #[test]
     fn input_backspace_handles_multibyte() {
+        let _env = TempEnv::new("input_backspace_handles_multibyte");
         let mut app = app_with(vec![], 0);
         app.start_adding();
         app.input_push('п');
@@ -520,6 +585,7 @@ mod tests {
 
     #[test]
     fn input_left_right_bounds() {
+        let _env = TempEnv::new("input_left_right_bounds");
         let mut app = app_with(vec![], 0);
         app.start_adding();
         app.input_push('a');

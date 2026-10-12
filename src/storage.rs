@@ -1,3 +1,4 @@
+use std::env;
 use std::fs;
 use std::path::PathBuf;
 
@@ -7,6 +8,15 @@ use directories::ProjectDirs;
 use crate::app::Todo;
 
 fn data_file() -> Result<PathBuf> {
+    if let Ok(custom) = env::var("SMART_TODO_FILE") {
+        let path = PathBuf::from(custom);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create {parent:?}"))?;
+        }
+        return Ok(path);
+    }
+
     let dirs = ProjectDirs::from("com", "smartlegionlab", "smart-todo-app-tui")
         .context("Failed to determine user data directory")?;
     let dir = dirs.data_dir().to_path_buf();
