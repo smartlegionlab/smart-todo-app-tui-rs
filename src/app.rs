@@ -10,6 +10,8 @@ pub const APP_REPO_URL: &str = "https://github.com/smartlegionlab/smart-todo-app
 pub const APP_SITE_URL: &str = "https://smartlegionlab.github.io";
 pub const APP_LICENSE: &str = "BSD-3-Clause";
 
+pub const MAX_TITLE_CHARS: usize = 200;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Todo {
     pub title: String,
@@ -133,6 +135,8 @@ impl App {
             return;
         }
 
+        let title = truncate_to_char_limit(&title, MAX_TITLE_CHARS);
+
         match self.mode {
             Mode::Adding => {
                 self.todos.push(Todo { title, done: false });
@@ -159,6 +163,10 @@ impl App {
     }
 
     pub fn input_push(&mut self, c: char) {
+        if self.input.chars().count() >= MAX_TITLE_CHARS {
+            return;
+        }
+
         let byte_idx = self
             .input
             .char_indices()
@@ -199,6 +207,10 @@ impl App {
         let done = self.todos.iter().filter(|t| t.done).count();
         (done, self.todos.len())
     }
+}
+
+fn truncate_to_char_limit(s: &str, limit: usize) -> String {
+    s.chars().take(limit).collect()
 }
 
 #[cfg(test)]
@@ -546,6 +558,51 @@ mod tests {
         app.input_push('X');
         assert_eq!(app.input, "cafXé");
         assert_eq!(app.input_cursor, 4);
+    }
+
+    #[test]
+    fn input_push_respects_max_length() {
+        let _env = TempEnv::new("input_push_respects_max_length");
+        let mut app = app_with(vec![], 0);
+        app.start_adding();
+
+        for _ in 0..MAX_TITLE_CHARS {
+            app.input_push('x');
+        }
+        assert_eq!(app.input.chars().count(), MAX_TITLE_CHARS);
+
+        app.input_push('y');
+        assert_eq!(app.input.chars().count(), MAX_TITLE_CHARS);
+        assert!(!app.input.ends_with('y'));
+    }
+
+    #[test]
+    fn input_push_respects_max_length_with_insert_at_middle() {
+        let _env = TempEnv::new("input_push_respects_max_length_with_insert_at_middle");
+        let mut app = app_with(vec![], 0);
+        app.start_adding();
+
+        for _ in 0..MAX_TITLE_CHARS {
+            app.input_push('x');
+        }
+        app.input_left();
+        app.input_left();
+        app.input_push('y');
+        assert_eq!(app.input.chars().count(), MAX_TITLE_CHARS);
+    }
+
+    #[test]
+    fn commit_truncates_to_max_length() {
+        let _env = TempEnv::new("commit_truncates_to_max_length");
+        let mut app = app_with(vec![], 0);
+        app.start_adding();
+
+        let long = "a".repeat(MAX_TITLE_CHARS + 50);
+        app.input = long;
+        app.input_cursor = app.input.chars().count();
+        app.commit_input();
+
+        assert_eq!(app.todos[0].title.chars().count(), MAX_TITLE_CHARS);
     }
 
     #[test]

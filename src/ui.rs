@@ -7,7 +7,8 @@ use ratatui::{
 };
 
 use crate::app::{
-    APP_AUTHOR, APP_LICENSE, APP_NAME, APP_REPO_URL, APP_SITE_URL, APP_VERSION, App, Mode,
+    APP_AUTHOR, APP_LICENSE, APP_NAME, APP_REPO_URL, APP_SITE_URL, APP_VERSION, App,
+    MAX_TITLE_CHARS, Mode,
 };
 
 pub fn render(f: &mut Frame, app: &App) {
@@ -154,7 +155,18 @@ fn render_input_modal(f: &mut Frame, app: &App) {
     let area = centered_rect(80, 20, f.area());
     f.render_widget(Clear, area);
 
-    let title = match app.mode {
+    let current_len = app.input.chars().count();
+    let counter = format!(" {current_len}/{MAX_TITLE_CHARS} ");
+
+    let counter_style = if current_len >= MAX_TITLE_CHARS {
+        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
+    } else if current_len >= MAX_TITLE_CHARS - 20 {
+        Style::default().fg(Color::Yellow)
+    } else {
+        Style::default().fg(Color::DarkGray)
+    };
+
+    let title_text = match app.mode {
         Mode::Adding => " New task ",
         Mode::Editing => " Edit task ",
         _ => "",
@@ -163,7 +175,8 @@ fn render_input_modal(f: &mut Frame, app: &App) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Yellow))
-        .title(title);
+        .title(title_text)
+        .title_top(Line::from(Span::styled(counter, counter_style)).alignment(Alignment::Right));
 
     let inner = block.inner(area);
     f.render_widget(block, area);
