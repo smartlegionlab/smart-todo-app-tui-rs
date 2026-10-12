@@ -90,7 +90,7 @@ Format:
     "done": false
   },
   {
-    "title": "Ship version 0.1.0",
+    "title": "Ship version 0.1.1",
     "done": true
   }
 ]
