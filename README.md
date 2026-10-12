@@ -19,6 +19,12 @@ Smart TODO TUI is a self-contained terminal application. It renders a full inter
 
 ---
 
+## Screenshots
+
+![Main view](https://raw.githubusercontent.com/smartlegionlab/smart-todo-app-tui-rs/master/data/images/screenshot-main.png)
+
+---
+
 ## Features
 
 - Full-screen terminal interface with borders, colors, and highlighted selection
