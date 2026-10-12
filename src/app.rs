@@ -7,7 +7,7 @@ pub const APP_NAME: &str = "smart-todo-app-tui";
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const APP_AUTHOR: &str = "Alexander Suvorov";
 pub const APP_REPO_URL: &str = "https://github.com/smartlegionlab/smart-todo-app-tui-rs";
-pub const APP_SITE_URL: &str = "https://smartlegionlab.com";
+pub const APP_SITE_URL: &str = "https://smartlegionlab.github.io";
 pub const APP_LICENSE: &str = "BSD-3-Clause";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

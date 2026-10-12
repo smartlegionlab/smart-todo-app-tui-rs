@@ -25,16 +25,12 @@ Smart TODO TUI is a self-contained terminal application. It renders a full inter
 - Add, edit, toggle, and delete tasks with single-key shortcuts
 - Two-press delete confirmation to prevent accidental removal
 - Modal input for adding and editing task titles
+- Long titles are truncated with an ellipsis in the list, and the input
+  modal scrolls horizontally so the cursor is always visible
 - About screen with version, author, license, and project links
 - Automatic persistence to a JSON file after every change
 - Cross-platform user data directory handling (Linux, macOS, Windows)
 - No external dependencies at runtime, no network access
-
----
-
-## Screenshots
-
-![smart-todo-app-tui-rs](https://github.com/smartlegionlab/smart-todo-app-tui-rs/blob/master/data/images/logo.png)
 
 ---
 
@@ -71,6 +67,17 @@ Inside the About screen:
 
 ---
 
+## Command Line
+
+```
+smart-todo-app-tui --help
+smart-todo-app-tui --version
+```
+
+With no arguments the application starts in interactive mode.
+
+---
+
 ## Data Storage
 
 Tasks are stored as JSON. The file location depends on your operating system and follows the standard user data directory convention:
@@ -104,7 +111,7 @@ The file is created automatically on first save. If it does not exist at startup
 
 Requirements:
 
-- Rust 1.85 or newer (edition 2024)
+- Rust 1.88 or newer (edition 2024)
 - Cargo
 
 ```bash
@@ -197,7 +204,7 @@ smart-todo-app-tui-rs/
 ├── install.sh
 ├── uninstall.sh
 └── src/
-    ├── main.rs       Entry point, terminal setup, event loop
+    ├── main.rs       Entry point, terminal setup, event loop, CLI parsing
     ├── app.rs        Application state, todo model, mode enum
     ├── events.rs     Keyboard event handling per mode
     ├── ui.rs         Rendering of header, list, footer, modals
@@ -210,19 +217,12 @@ smart-todo-app-tui-rs/
 
 BSD 3-Clause License. See [LICENSE](LICENSE).
 
-Copyright (©) 2026, Alexander Suvorov
+Copyright (c) 2026, Alexander Suvorov
 
 ---
 
 ## Links
 
 - Repository: https://github.com/smartlegionlab/smart-todo-app-tui-rs
-- Website: https://smartlegionlab.com
-
----
-
-
-
-
-
+- Website: https://smartlegionlab.github.io
 

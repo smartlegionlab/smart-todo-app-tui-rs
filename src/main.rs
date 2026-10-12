@@ -7,6 +7,7 @@ use std::io;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
+use clap::Parser;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyEventKind},
     execute,
@@ -14,9 +15,27 @@ use crossterm::{
 };
 use ratatui::{Terminal, backend::CrosstermBackend};
 
-use app::App;
+use app::{APP_NAME, APP_VERSION, App};
+
+#[derive(Parser, Debug)]
+#[command(
+    name = APP_NAME,
+    version = APP_VERSION,
+    about = "A terminal user interface todo application written in Rust",
+    long_about = "Smart TODO TUI is a self-contained terminal application.\n\
+                  It renders a full interface in your terminal, handles input\n\
+                  via the keyboard, and persists tasks to a JSON file in the\n\
+                  standard user data directory for your operating system.\n\n\
+                  Author:  Alexander Suvorov\n\
+                  License: BSD-3-Clause\n\
+                  Repo:    https://github.com/smartlegionlab/smart-todo-app-tui-rs\n\
+                  Website: https://smartlegionlab.github.io"
+)]
+struct Cli {}
 
 fn main() -> Result<()> {
+    let _cli = Cli::parse();
+
     let original_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         let _ = restore_terminal();

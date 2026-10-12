@@ -6,13 +6,14 @@ rust-version = "1.88"
 license = "BSD-3-Clause"
 authors = ["Alexander Suvorov <smartlegionlab@gmail.com>"]
 repository = "https://github.com/smartlegionlab/smart-todo-app-tui-rs"
-homepage = "https://smartlegionlab.com"
+homepage = "https://smartlegionlab.github.io"
 description = "A terminal user interface todo application written in Rust"
 readme = "README.md"
 keywords = ["todo", "tui", "terminal", "cli"]
 categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
+clap = { version = "4", features = ["derive"] }
 ratatui = "0.29"
 crossterm = "0.28"
 serde = { version = "1", features = ["derive"] }
