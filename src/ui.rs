@@ -43,6 +43,10 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_list(f: &mut Frame, app: &App, area: Rect) {
+    let inner_width = area.width.saturating_sub(2) as usize;
+    let highlight_width = 2;
+    let available = inner_width.saturating_sub(highlight_width);
+
     let items: Vec<ListItem> = app
         .todos
         .iter()
@@ -65,13 +69,20 @@ fn render_list(f: &mut Frame, app: &App, area: Rect) {
             };
 
             let suffix = if pending { "  (press d again)" } else { "" };
+            let prefix = format!("{mark} ");
+
+            let prefix_len = prefix.chars().count();
+            let suffix_len = suffix.chars().count();
+            let title_space = available.saturating_sub(prefix_len + suffix_len);
+
+            let title_display = truncate_with_ellipsis(&t.title, title_space);
 
             ListItem::new(Line::from(vec![
                 Span::styled(
-                    format!("{mark} "),
+                    prefix,
                     Style::default().fg(if t.done { Color::Green } else { Color::Yellow }),
                 ),
-                Span::styled(t.title.clone(), title_style),
+                Span::styled(title_display, title_style),
                 Span::styled(suffix, Style::default().fg(Color::Red)),
             ]))
         })
@@ -121,7 +132,10 @@ fn render_footer(f: &mut Frame, app: &App, area: Rect) {
         )
     };
 
-    let p = Paragraph::new(text)
+    let inner_width = area.width.saturating_sub(2) as usize;
+    let text_display = truncate_with_ellipsis(&text, inner_width);
+
+    let p = Paragraph::new(text_display)
         .alignment(Alignment::Center)
         .style(Style::default().fg(color))
         .block(
@@ -137,7 +151,7 @@ fn render_footer(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_input_modal(f: &mut Frame, app: &App) {
-    let area = centered_rect(60, 20, f.area());
+    let area = centered_rect(80, 20, f.area());
     f.render_widget(Clear, area);
 
     let title = match app.mode {
@@ -154,26 +168,23 @@ fn render_input_modal(f: &mut Frame, app: &App) {
     let inner = block.inner(area);
     f.render_widget(block, area);
 
-    let chars: Vec<char> = app.input.chars().collect();
-    let cursor = app.input_cursor.min(chars.len());
-    let before: String = chars[..cursor].iter().collect();
-    let after: String = chars[cursor..].iter().collect();
+    if inner.height == 0 || inner.width == 0 {
+        return;
+    }
 
-    let line = Line::from(vec![
-        Span::raw(before),
-        Span::styled(
-            "|",
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::SLOW_BLINK),
-        ),
-        Span::raw(after),
-    ]);
+    let hint_height = if inner.height > 1 { 1 } else { 0 };
+    let input_height = inner.height.saturating_sub(hint_height);
 
-    let p = Paragraph::new(line).style(Style::default().fg(Color::White));
-    f.render_widget(p, inner);
+    let input_area = Rect {
+        x: inner.x,
+        y: inner.y,
+        width: inner.width,
+        height: input_height,
+    };
 
-    if inner.height > 1 {
+    render_input_line(f, app, input_area);
+
+    if hint_height > 0 {
         let hint_area = Rect {
             x: inner.x,
             y: inner.y + inner.height - 1,
@@ -185,6 +196,71 @@ fn render_input_modal(f: &mut Frame, app: &App) {
             .alignment(Alignment::Right);
         f.render_widget(hint, hint_area);
     }
+}
+
+fn render_input_line(f: &mut Frame, app: &App, area: Rect) {
+    let chars: Vec<char> = app.input.chars().collect();
+    let cursor = app.input_cursor.min(chars.len());
+
+    let width = area.width as usize;
+    if width == 0 {
+        return;
+    }
+
+    let reserved = 1;
+    let window_width = width.saturating_sub(reserved);
+    if window_width == 0 {
+        return;
+    }
+
+    let (start, end) = visible_window(cursor, chars.len(), window_width);
+
+    let mut spans: Vec<Span> = Vec::new();
+
+    if start > 0 {
+        spans.push(Span::styled("<", Style::default().fg(Color::DarkGray)));
+    }
+
+    let before: String = chars[start..cursor].iter().collect();
+    if !before.is_empty() {
+        spans.push(Span::raw(before));
+    }
+
+    spans.push(Span::styled(
+        "|",
+        Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::SLOW_BLINK),
+    ));
+
+    let after: String = chars[cursor..end].iter().collect();
+    if !after.is_empty() {
+        spans.push(Span::raw(after));
+    }
+
+    if end < chars.len() {
+        spans.push(Span::styled(">", Style::default().fg(Color::DarkGray)));
+    }
+
+    let p = Paragraph::new(Line::from(spans)).style(Style::default().fg(Color::White));
+    f.render_widget(p, area);
+}
+
+fn visible_window(cursor: usize, total: usize, window_width: usize) -> (usize, usize) {
+    if total <= window_width {
+        return (0, total);
+    }
+
+    let half = window_width / 2;
+
+    if cursor <= half {
+        return (0, window_width);
+    }
+
+    let end = (cursor + half).min(total);
+    let start = end.saturating_sub(window_width);
+
+    (start, end)
 }
 
 fn render_about_modal(f: &mut Frame, _app: &App) {
@@ -277,4 +353,82 @@ fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(vertical[1])[1]
+}
+
+fn truncate_with_ellipsis(s: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+
+    let count = s.chars().count();
+    if count <= max_chars {
+        return s.to_string();
+    }
+
+    if max_chars == 1 {
+        return "…".to_string();
+    }
+
+    let take = max_chars - 1;
+    let truncated: String = s.chars().take(take).collect();
+    format!("{truncated}…")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn truncate_short_string_unchanged() {
+        assert_eq!(truncate_with_ellipsis("hello", 10), "hello");
+    }
+
+    #[test]
+    fn truncate_exact_length_unchanged() {
+        assert_eq!(truncate_with_ellipsis("hello", 5), "hello");
+    }
+
+    #[test]
+    fn truncate_long_string_adds_ellipsis() {
+        assert_eq!(truncate_with_ellipsis("hello world", 8), "hello w…");
+    }
+
+    #[test]
+    fn truncate_zero_width_returns_empty() {
+        assert_eq!(truncate_with_ellipsis("hello", 0), "");
+    }
+
+    #[test]
+    fn truncate_one_width_returns_ellipsis() {
+        assert_eq!(truncate_with_ellipsis("hello", 1), "…");
+    }
+
+    #[test]
+    fn truncate_handles_multibyte() {
+        assert_eq!(truncate_with_ellipsis("привет мир", 7), "привет…");
+    }
+
+    #[test]
+    fn visible_window_short_text_fits() {
+        assert_eq!(visible_window(3, 5, 10), (0, 5));
+    }
+
+    #[test]
+    fn visible_window_cursor_at_start() {
+        assert_eq!(visible_window(0, 100, 20), (0, 20));
+    }
+
+    #[test]
+    fn visible_window_cursor_in_middle() {
+        let (start, end) = visible_window(50, 100, 20);
+        assert_eq!(end - start, 20);
+        assert!(start <= 50 && 50 <= end);
+    }
+
+    #[test]
+    fn visible_window_cursor_at_end() {
+        let (start, end) = visible_window(100, 100, 20);
+        assert_eq!(end, 100);
+        assert_eq!(end - start, 20);
+    }
 }
